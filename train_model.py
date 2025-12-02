@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
@@ -13,42 +12,36 @@ import joblib
 df = pd.read_csv("Australian Vehicle Prices.csv")
 
 # =============================
-# 2. Membersihkan kolom Price
+# 2. Konversi Price ke numeric
 # =============================
-# Hilangkan simbol $, koma, spasi
-df["Price"] = (
-    df["Price"]
-    .astype(str)          
-    .str.replace("$", "", regex=False)
-    .str.replace(",", "", regex=False)
-    .str.strip()
-)
-
-# Konversi ke numeric
 df["Price"] = pd.to_numeric(df["Price"], errors="coerce")
 
-# Drop harga yang tidak valid
+# Drop data invalid 
 df = df.dropna(subset=["Price"])
 
-print("DEBUG: 10 harga pertama setelah dibersihkan:")
+df["Price"] = df["Price"].astype(int)
+
+print("DEBUG: 10 harga pertama setelah convert → int")
 print(df["Price"].head(10))
 
 # =============================
 # 3. Buat kategori harga
 # =============================
 def categorize_price(price):
-    price = float(price)
+    price = int(price)
     if price < 15000:
         return "Low"
     elif price < 30000:
         return "Medium"
-    else:
+    elif price < 60000:
         return "High"
+    else:
+        return "Very High"
 
 df["Price_Category"] = df["Price"].apply(categorize_price)
 
 # =============================
-# 4. Fitur & Target
+# 4. Pilih fitur
 # =============================
 X = df[["Make", "Model", "Year", "Kilometres"]]
 y = df["Price_Category"]
@@ -71,7 +64,7 @@ model = Pipeline(
         ("preprocessor", preprocessor),
         ("classifier", XGBClassifier(
             objective="multi:softmax",
-            num_class=3,
+            num_class=4,
             eval_metric="mlogloss"
         ))
     ]
