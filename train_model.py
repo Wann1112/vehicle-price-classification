@@ -15,20 +15,13 @@ df = pd.read_csv("Australian Vehicle Prices.csv")
 # 2. Konversi Price ke numeric
 # =============================
 df["Price"] = pd.to_numeric(df["Price"], errors="coerce")
-
-# Drop data invalid 
 df = df.dropna(subset=["Price"])
-
 df["Price"] = df["Price"].astype(int)
-
-print("DEBUG: 10 harga pertama setelah convert → int")
-print(df["Price"].head(10))
 
 # =============================
 # 3. Buat kategori harga
 # =============================
 def categorize_price(price):
-    price = int(price)
     if price < 15000:
         return "Low"
     elif price < 30000:
@@ -43,7 +36,7 @@ df["Price_Category"] = df["Price"].apply(categorize_price)
 # =============================
 # 4. Pilih fitur
 # =============================
-X = df[["Make", "Model", "Year", "Kilometres"]]
+X = df[["Brand", "Model", "Year", "Kilometres"]]
 y = df["Price_Category"]
 
 # =============================
@@ -51,7 +44,7 @@ y = df["Price_Category"]
 # =============================
 preprocessor = ColumnTransformer(
     transformers=[
-        ("cat", OneHotEncoder(handle_unknown="ignore"), ["Make", "Model"]),
+        ("cat", OneHotEncoder(handle_unknown="ignore"), ["Brand", "Model"]),
         ("num", "passthrough", ["Year", "Kilometres"])
     ]
 )
