@@ -1,37 +1,31 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import numpy as np
+
+st.title("Vehicle Price Category Classification")
+st.write("Klasifikasi harga mobil: **Low – Medium – High – Very High**")
 
 # Load model
-model = joblib.load("xgb_model.pkl")
-label_y = joblib.load("label_encoder.pkl")
-feature_template = joblib.load("feature_columns.pkl")
+try:
+    model = joblib.load("xgb_model.pkl")
+except:
+    st.error("Model belum tersedia. Jalankan train_model.py terlebih dahulu.")
+    st.stop()
 
-st.title("Prediksi Kategori Harga Mobil")
-st.write("Model: XGBoost Classifier")
-
-feature_names = feature_template.columns
-inputs = {}
-
-st.subheader("Masukkan Data Kendaraan")
-
-for col in feature_names:
-    if feature_template[col].dtype == "object":
-        inputs[col] = st.text_input(col)
-    else:
-        inputs[col] = st.number_input(col, value=0)
+# Input user
+brand = st.text_input("Brand")
+model_name = st.text_input("Model")
+year = st.number_input("Year", min_value=1900, max_value=2030, value=2015)
+km = st.number_input("Kilometres", min_value=0, value=50000)
 
 if st.button("Prediksi"):
-    df_input = pd.DataFrame([inputs])
+    input_df = pd.DataFrame({
+        "Brand": [brand],
+        "Model": [model_name],
+        "Year": [year],
+        "Kilometres": [km]
+    })
 
-    for col in df_input.columns:
-        try:
-            df_input[col] = df_input[col].astype(int)
-        except:
-            df_input[col] = df_input[col].astype("category").cat.codes
+    pred = model.predict(input_df)[0]
 
-    pred = model.predict(df_input)[0]
-    label = label_y.inverse_transform([pred])[0]
-
-    st.success(f"Kategori Harga: **{label}**")
+    st.success(f"Kategori Harga: **{pred}** 🚀")
