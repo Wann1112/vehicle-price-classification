@@ -1,84 +1,74 @@
 import pandas as pd
 import numpy as np
-import joblib
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
+import joblib
 
-# =========================
-# 1. Load Dataset
-# =========================
+# =============================
+# 1. Load dataset
+# =============================
 df = pd.read_csv("Australian Vehicle Prices.csv")
 
-# Mengecek apakah kolom Price ada
-if "Price" not in df.columns:
-    raise ValueError("Kolom 'Price' tidak ditemukan dalam dataset!")
+# =============================
+# 2. Pastikan kolom Price numeric
+# =============================
+df["Price"] = pd.to_numeric(df["Price"], errors="coerce")
+df = df.dropna(subset=["Price"])  # hapus baris yang Price tidak bisa dikonversi
 
-# =========================
-# 2. Membuat Label Harga
-# =========================
+# =============================
+# 3. Buat kolom kategori harga
+# =============================
 def categorize_price(price):
     if price < 15000:
-        return "Murah"
-    elif 15000 <= price < 30000:
-        return "Sedang"
-    elif 30000 <= price < 60000:
-        return "Mahal"
+        return "Low"
+    elif price < 30000:
+        return "Medium"
     else:
-        return "Sangat Mahal"
+        return "High"
 
 df["Price_Category"] = df["Price"].apply(categorize_price)
 
-# =========================
-# 3. Memisahkan Fitur & Label
-# =========================
-X = df.drop(["Price", "Price_Category"], axis=1)
+# =============================
+# 4. Fitur & target
+# =============================
+X = df[["Make", "Model", "Year", "Kilometres"]]
 y = df["Price_Category"]
 
-# Mnegidentifikasi kolom numerik & kategorikal
-num_cols = X.select_dtypes(include=["int64", "float64"]).columns
-cat_cols = X.select_dtypes(include=["object"]).columns
-
-# =========================
-# 4. Preprocessing
-# =========================
-scaler = StandardScaler()
-encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
-
-# Fit & Transform
-X_num = scaler.fit_transform(X[num_cols])
-X_cat = encoder.fit_transform(X[cat_cols])
-
-# Gabungkan fitur numerik + kategorikal
-X_processed = np.hstack([X_num, X_cat])
-
-# =========================
-# 5. Train-Test Split
-# =========================
-X_train, X_test, y_train, y_test = train_test_split(
-    X_processed, y, test_size=0.2, random_state=42, stratify=y
+# =============================
+# 5. Preprocessing
+# =============================
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("cat", OneHotEncoder(handle_unknown="ignore"), ["Make", "Model"]),
+        ("num", "passthrough", ["Year", "Kilometres"])
+    ]
 )
 
-# =========================
-# 6. Train Model XGBoost
-# =========================
-model = XGBClassifier(
-    n_estimators=300,
-    learning_rate=0.05,
-    max_depth=6,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    eval_metric="mlogloss",
+# =============================
+# 6. Model
+# =============================
+model = Pipeline(
+    steps=[
+        ("preprocessor", preprocessor),
+        ("classifier", XGBClassifier(
+            objective="multi:softmax",
+            num_class=3,
+            eval_metric="mlogloss"
+        ))
+    ]
 )
 
-model.fit(X_train, y_train)
+# =============================
+# 7. Train Model
+# =============================
+print("Training model...")
+model.fit(X, y)
 
-# =========================
-# 7. Simpan Model & Preprocessor
-# =========================
+# =============================
+# 8. Simpan model
+# =============================
 joblib.dump(model, "xgb_model.pkl")
-joblib.dump(scaler, "scaler.pkl")
-joblib.dump(encoder, "encoder.pkl")
-
-print("Model berhasil dilatih dan disimpan!")
+print("Model berhasil disimpan sebagai xgb_model.pkl")
