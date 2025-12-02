@@ -13,15 +13,31 @@ import joblib
 df = pd.read_csv("Australian Vehicle Prices.csv")
 
 # =============================
-# 2. Pastikan kolom Price numeric
+# 2. Membersihkan kolom Price
 # =============================
+# Hilangkan simbol $, koma, spasi
+df["Price"] = (
+    df["Price"]
+    .astype(str)          
+    .str.replace("$", "", regex=False)
+    .str.replace(",", "", regex=False)
+    .str.strip()
+)
+
+# Konversi ke numeric
 df["Price"] = pd.to_numeric(df["Price"], errors="coerce")
-df = df.dropna(subset=["Price"])  # hapus baris yang Price tidak bisa dikonversi
+
+# Drop harga yang tidak valid
+df = df.dropna(subset=["Price"])
+
+print("DEBUG: 10 harga pertama setelah dibersihkan:")
+print(df["Price"].head(10))
 
 # =============================
-# 3. Buat kolom kategori harga
+# 3. Buat kategori harga
 # =============================
 def categorize_price(price):
+    price = float(price)
     if price < 15000:
         return "Low"
     elif price < 30000:
@@ -32,7 +48,7 @@ def categorize_price(price):
 df["Price_Category"] = df["Price"].apply(categorize_price)
 
 # =============================
-# 4. Fitur & target
+# 4. Fitur & Target
 # =============================
 X = df[["Make", "Model", "Year", "Kilometres"]]
 y = df["Price_Category"]
@@ -68,7 +84,7 @@ print("Training model...")
 model.fit(X, y)
 
 # =============================
-# 8. Simpan model
+# 8. Save Model
 # =============================
 joblib.dump(model, "xgb_model.pkl")
-print("Model berhasil disimpan sebagai xgb_model.pkl")
+print("BERHASIL: Model disimpan sebagai xgb_model.pkl")
